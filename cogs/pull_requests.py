@@ -1,4 +1,4 @@
-from __main__ import bot
+from __main__ import bot # pylint: disable=no-name-in-module
 import re
 import hikari
 import lightbulb
