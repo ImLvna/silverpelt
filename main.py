@@ -1,46 +1,73 @@
-from os import environ
-from builtins import print as _print
-from re import search
-import lightbulb
-import hikari
-import dotenv
+import os
+from time import time
+import threading
+from quart import Quart, request
 
+tokens = {
+    "test": {
+        "expire": time() + 60,
+        "requester": "174200708818665472",
+        "requestee": "174200708818665472"
+    }
+}
 
-dotenv.load_dotenv(".env")
-bot = lightbulb.BotApp(
-    token=environ.get("DISCORD_TOKEN"),
-    prefix="~",
-    intents=hikari.Intents.ALL_UNPRIVILEGED + hikari.Intents.MESSAGE_CONTENT,
-    help_class=None,
-    owner_ids=[174200708818665472, 266751215767912463])
+def add_token(token, data):
+    tokens[token] = data
 
-
-@bot.command
-@lightbulb.command("ping", "Calls the bot with its delay")
-@lightbulb.implements(lightbulb.PrefixCommand, lightbulb.SlashCommand)
-async def ping(ctx: lightbulb.Context) -> None:
-    await ctx.respond(f"Pong! Bot ping is {round(ctx.bot.heartbeat_latency*1000, 1)}ms")
-
-
-@bot.command
-@lightbulb.command("reload", "reloads all extensions")
-@lightbulb.implements(lightbulb.PrefixCommand, lightbulb.SlashCommand)
-async def reload(ctx: lightbulb.Context) -> None:
-    message = await ctx.respond(embed=hikari.Embed(description="**Reloading all extensions**", color=0x8aadff))
-    try:
-        for i in extensions:
-            bot.reload_extensions(i)
-        await message.edit(embed=hikari.Embed(description="**:white_check_mark: Reloaded**", color=0x29ff70))
-    except Exception as e:
-        await message.edit(embed=hikari.Embed(description=f"**:x: Error reloading**\n{e}", color=0xff3838))
+app = Quart(__name__,
+            static_folder='static',
+            static_url_path='/static',
+            template_folder='templates')
 
 
 
+@app.route('/logtoken/<token>')
+async def logtoken(token):
 
-bot.load_extensions_from("cogs")
-extensions = bot.extensions
-bot.run()
+    if token is None:
+        return "400", 400
+    if token not in tokens.keys(): # pylint: disable=consider-iterating-dictionary
+        return "400", 400
 
-from server import app, add_token
+    if tokens[token].get("expire") < time():
+        del tokens[token]
+        return "400", 400
+    
+    return "200", 200
 
+
+@app.route('/logs/', methods=["POST"])
+async def get_logs():
+    token = request.headers.get("token")
+    
+    if token is None:
+        return "401", 401
+    if token not in tokens.keys(): # pylint: disable=consider-iterating-dictionary
+        return "401", 401
+    
+    if tokens[token].get("expire") > time():
+        del tokens[token]
+        return "401", 401
+    
+    token = tokens[token]
+
+    
+    response = await request.get_json()
+    if len(response) == 0:
+        return "400", 400
+    logs = []
+    for key in response.keys():
+        logs.append(response[key])
+    return "200", 200
+
+
+class BotThread(threading.Thread):
+    def __init__(self):
+        super().__init__()
+
+    def run(self):
+        from bot import bot
+        bot.run()
+
+BotThread().start()
 app.run(host='0.0.0.0',port=8080)

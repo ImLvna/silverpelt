@@ -1,4 +1,4 @@
-from __main__ import bot
+from bot import bot
 from os import environ
 from builtins import print as _print
 from re import search
