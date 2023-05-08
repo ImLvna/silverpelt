@@ -59,4 +59,3 @@ async def get_logs():
         logs.append(response[key])
     return "200", 200
 
-app.run(host='0.0.0.0',port=8080)
