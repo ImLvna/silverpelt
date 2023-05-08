@@ -5,6 +5,8 @@ import lightbulb
 import hikari
 import dotenv
 
+from server import add_token
+
 dotenv.load_dotenv(".env")
 bot = lightbulb.BotApp(
     token=environ.get("DISCORD_TOKEN"),

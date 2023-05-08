@@ -1,42 +1,62 @@
 import os
+from time import time
 from quart import Quart, request
-import ujson as json
+
+tokens = {
+    "test": {
+        "expire": time() + 60,
+        "requester": "174200708818665472",
+        "requestee": "174200708818665472"
+    }
+}
+
+def add_token(token, data):
+    tokens[token] = data
 
 app = Quart(__name__,
             static_folder='static',
             static_url_path='/static',
             template_folder='templates')
 
-if not os.path.exists("log_tokens.json"):
-    with open("log_tokens.json", "w") as file:
-        json.dump({}, file)
 
 
 @app.route('/logtoken/<token>')
 async def logtoken(token):
-    with open("log_tokens.json", "r") as file:
-        fp = json.load(file)
-        if fp.get(token) is None:
-            return "400", 400
+
+    if token is None:
+        return "400", 400
+    if token not in tokens.keys(): # pylint: disable=consider-iterating-dictionary
+        return "400", 400
+
+    if tokens[token].get("expire") < time():
+        del tokens[token]
+        return "400", 400
+    
     return "200", 200
 
 
 @app.route('/logs/', methods=["POST"])
 async def get_logs():
-    with open("log_tokens.json", "r") as file:
-        fp = json.load(file)
-        if fp[request.headers.get("token")] is None:
-            return "401", 401
+    token = request.headers.get("token")
+    
+    if token is None:
+        return "401", 401
+    if token not in tokens.keys(): # pylint: disable=consider-iterating-dictionary
+        return "401", 401
+    
+    if tokens[token].get("expire") > time():
+        del tokens[token]
+        return "401", 401
+    
+    token = tokens[token]
+
+    
     response = await request.get_json()
     if len(response) == 0:
         return "400", 400
     logs = []
     for key in response.keys():
         logs.append(response[key])
-    with open("log_tokens.json", "a") as file:
-        fp = json.load(file)
-        fp[request.headers.get("token")] = logs
-        json.dump(fp, file)
     return "200", 200
 
-app.run(port=8000)
+app.run(host='0.0.0.0',port=8080)
