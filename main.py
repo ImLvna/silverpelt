@@ -28,7 +28,7 @@ async def ping(ctx: lightbulb.Context) -> None:
 @lightbulb.implements(lightbulb.PrefixCommand, lightbulb.SlashCommand)
 async def reload(ctx: lightbulb.Context) -> None:
     message = await ctx.respond(embed=hikari.Embed(description="**Reloading all extensions**", color=0x8aadff))
-    try:
+    try: 
         bot.reload_extensions()
         await message.edit(embed=hikari.Embed(description="**:white_check_mark: Reloaded**", color=0x29ff70))
     except Exception as e:
